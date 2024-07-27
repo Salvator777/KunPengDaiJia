@@ -18,11 +18,11 @@ type Customer struct {
 
 // 业务逻辑部分
 type CustomerWork struct {
-	PhoneNum string `gorm:"type: varchar(15);uniqueIndex" json:"phone_num,omitempty"`
-	Name     string `gorm:"type: varchar(15);uniqueIndex" json:"name,omitempty"`
-	Email    string `gorm:"type: varchar(255);uniqueIndex" json:"email,omitempty"`
-	Wechat   string `gorm:"type: varchar(255);uniqueIndex" json:"wechat,omitempty"`
-	CityID   uint   `gorm:"index;" json:"cityid,omitempty"`
+	PhoneNum string         `gorm:"type: varchar(15);uniqueIndex" json:"phone_num,omitempty"`
+	Name     sql.NullString `gorm:"type: varchar(15);uniqueIndex" json:"name,omitempty"`
+	Email    sql.NullString `gorm:"type: varchar(255);uniqueIndex" json:"email,omitempty"`
+	Wechat   sql.NullString `gorm:"type: varchar(255);uniqueIndex" json:"wechat,omitempty"`
+	CityID   uint           `gorm:"index;" json:"cityid,omitempty"`
 }
 
 type CustomerToken struct {

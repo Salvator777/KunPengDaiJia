@@ -47,5 +47,42 @@ func (s *CustomerService) GetVerifyCode(ctx context.Context, req *pb.GetVerifyCo
 }
 
 func (s *CustomerService) Login(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp, error) {
-	return &pb.LoginResp{}, nil
+	// 1.校验手机号和验证码
+	if !s.CData.IsVerifyOK(req.PhoneNum, req.VerifyCode) {
+		return &pb.LoginResp{
+			Code:    201,
+			Message: "验证码错误",
+		}, nil
+	}
+
+	// 2.判断手机号是否已注册
+	// 返回手机号对应的用户，如果没有就插入数据后再返回
+	customer, err := s.CData.GetCustomerByPhoneNum(req.PhoneNum)
+	if err != nil {
+		return &pb.LoginResp{
+			Code:    201,
+			Message: "顾客信息获取错误",
+		}, nil
+	}
+
+	// 3.设置token，jwt
+	const secret = "MySecretKey"
+	const life = 3600 * 24 * 30 * 2
+	// 有效期两个月
+	token, err := s.CData.GenerateTokenAndSave(customer, time.Second*life, []byte(secret))
+	if err != nil {
+		return &pb.LoginResp{
+			Code:    201,
+			Message: "token生成错误",
+		}, nil
+	}
+
+	// 4.响应token
+	return &pb.LoginResp{
+		Code:      200,
+		Message:   "login success",
+		Token:     token,
+		TokenTime: time.Now().Unix(),
+		TokenLift: life,
+	}, nil
 }

@@ -4,10 +4,16 @@ import (
 	"context"
 	pb "customer/api/customer"
 	"customer/api/verifyCode"
+	"customer/internal/biz"
+	"database/sql"
+	"fmt"
 	"regexp"
 	"time"
 
+	"github.com/go-kratos/kratos/v2/errors"
 	"github.com/go-kratos/kratos/v2/transport/grpc"
+	"github.com/golang-jwt/jwt/v5"
+	"gorm.io/gorm"
 )
 
 // customer相关数据操作相关的代码
@@ -28,7 +34,7 @@ func (CData CustomerData) SetVerifyCode(PhoneNum, code string, life int) error {
 	return nil
 }
 
-// 获取验证码
+// grpc调用获取随机6位验证码服务
 func (CData CustomerData) GetVerifyCode(PhoneNum string) (*pb.GetVerifyCodeResp, error) {
 	// 1.正则校验手机号
 	pattern := `^(13\d|14[01456879]|15[0-35-9]|16[2567]|17[0-8]|18\d|19[0-35-9])\d{8}$`
@@ -70,4 +76,79 @@ func (CData CustomerData) GetVerifyCode(PhoneNum string) (*pb.GetVerifyCodeResp,
 	return &pb.GetVerifyCodeResp{
 		VerifyCode: rep.Code,
 	}, nil
+}
+
+func (CData CustomerData) IsVerifyOK(PhoneNum, verify_code string) bool {
+	value := CData.data.Rdb.Get(context.Background(), "CVC:"+PhoneNum)
+	if value.String() == "" || value.Val() != verify_code {
+		return false
+	}
+	return true
+}
+
+// 通过手机号找用户
+func (CData CustomerData) GetCustomerByPhoneNum(PhoneNum string) (*biz.Customer, error) {
+	customer := new(biz.Customer)
+	// 用手机号去查
+	result := CData.data.Mdb.Where("phone_num=?", PhoneNum).First(customer)
+
+	// 查询成功
+	if result.Error == nil && customer.ID > 0 {
+		return customer, nil
+	}
+
+	// 没找到
+	if result.Error != nil && errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		// 创建记录并返回
+		customer.PhoneNum = PhoneNum
+		if result := CData.data.Mdb.Create(customer); result.Error != nil {
+			return nil, result.Error
+		} else {
+			return customer, nil
+		}
+	}
+
+	// 有错误，但是不是记录不存在的错误
+	return nil, result.Error
+}
+
+// 生成token并存储
+func (CData CustomerData) GenerateTokenAndSave(c *biz.Customer, life time.Duration, secret []byte) (string, error) {
+	// 1.处理token的载荷数据
+	//标准的JWT的payload
+	claims := jwt.RegisteredClaims{
+		// 签发机构
+		Issuer: "KunPengDJ",
+		// 说明
+		Subject: "给customer登录使用",
+		//签发给谁用
+		Audience: []string{"customer"},
+		// 有效期至
+		ExpiresAt: &jwt.NumericDate{time.Now().Add(life)},
+		// 何时启用
+		NotBefore: nil,
+		// 签发时间
+		IssuedAt: &jwt.NumericDate{time.Now()},
+		// 存什么都行，这里用来存custmer的id
+		ID: fmt.Sprintf("%d", c.ID),
+	}
+
+	// 2.生成token
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signedToken, err := token.SignedString(secret)
+	if err != nil {
+		return "", err
+	}
+
+	// 3.签名成功，进行存储
+	c.Token = signedToken
+	c.TokenCreatedAt = sql.NullTime{
+		Time:  time.Now(),
+		Valid: true,
+	}
+	if result := CData.data.Mdb.Save(c); result.Error != nil {
+		return "", result.Error
+	}
+
+	return signedToken, nil
 }
