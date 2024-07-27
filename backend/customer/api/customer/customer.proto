@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package api.customer;
+
+import "google/api/annotations.proto";
+
+option go_package = "customer/api/customer;customer";
+
+
+service Customer {
+	// 验证码服务
+	rpc GetVerifyCode (GetVerifyCodeReq) returns (GetVerifyCodeResp){
+		// http方法，要定义http的选项
+		option (google.api.http) = {
+			// 用大括号表示这是一个参数
+			get:"/customer/get-verify-code/{PhoneNum}"
+		};
+	}
+
+	rpc Login (LoginReq) returns (LoginResp){
+		// http方法，要定义http的选项
+		option (google.api.http) = {
+			// 用大括号表示这是一个参数
+			post:"/customer/Login"
+			// post 请求需要 body:"*"的选项，用来匹配请求主体，进而去解析到请求参数中。
+			body:"*"
+		};
+	}
+}
+
+message LoginReq{
+	string PhoneNum = 1;  
+	string verify_code = 2;
+}
+
+message LoginResp{ 
+	int32 code = 1;
+	string message = 2;
+	// token字符串，采用JWT格式
+	string token = 3;
+	// token生成时间
+	int64 token_time = 4;
+	// token有效期
+	int64 token_lift = 5;
+}
+
+message GetVerifyCodeReq{
+	string PhoneNum = 1;  
+};
+
+// http的返回格式，固定写法
+message GetVerifyCodeResp{
+	// code表示是否成功，200成功，201失败
+	int32 code = 1;
+	// 附带的注释信息
+	string message = 2;
+	// 验证码
+	string verify_code = 3;
+	// 验证码生成时间
+	int64 verify_code_time = 4;
+	// 验证码有效期
+	int64 verify_code_lift = 5;
+};

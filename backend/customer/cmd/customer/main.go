@@ -2,11 +2,9 @@ package main
 
 import (
 	"flag"
-	"math/rand"
 	"os"
-	"time"
 
-	"verifyCode/internal/conf"
+	"customer/internal/conf"
 
 	"github.com/go-kratos/kratos/v2"
 	"github.com/go-kratos/kratos/v2/config"
@@ -50,9 +48,6 @@ func newApp(logger log.Logger, gs *grpc.Server, hs *http.Server) *kratos.App {
 }
 
 func main() {
-	// 设置全局随机数种子
-	rand.New(rand.NewSource(time.Now().UnixNano()))
-
 	flag.Parse()
 	logger := log.With(log.NewStdLogger(os.Stdout),
 		"ts", log.DefaultTimestamp,

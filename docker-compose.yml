@@ -1,0 +1,19 @@
+services:
+  redis:
+    container_name: KunPengDJRedis
+    image: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data
+  mysql:
+    container_name: KunPengDJMySQL
+    image: mysql
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 243326
+      MYSQL_DATABASE: KunPengDJ_customer
+
