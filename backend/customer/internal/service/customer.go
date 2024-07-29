@@ -5,6 +5,7 @@ import (
 	"time"
 
 	pb "customer/api/customer"
+	"customer/internal/biz"
 	"customer/internal/data"
 )
 
@@ -65,11 +66,9 @@ func (s *CustomerService) Login(ctx context.Context, req *pb.LoginReq) (*pb.Logi
 		}, nil
 	}
 
-	// 3.设置token，jwt
-	const secret = "MySecretKey"
-	const life = 3600 * 24 * 30 * 2
+	// 3.生成token并存储
 	// 有效期两个月
-	token, err := s.CData.GenerateTokenAndSave(customer, time.Second*life, []byte(secret))
+	token, err := s.CData.GenerateTokenAndSave(customer, time.Second*biz.CustomerTokenLife, []byte(biz.CustomerSecret))
 	if err != nil {
 		return &pb.LoginResp{
 			Code:    201,
@@ -83,6 +82,10 @@ func (s *CustomerService) Login(ctx context.Context, req *pb.LoginReq) (*pb.Logi
 		Message:   "login success",
 		Token:     token,
 		TokenTime: time.Now().Unix(),
-		TokenLift: life,
+		TokenLift: biz.CustomerTokenLife,
 	}, nil
+}
+
+func (s *CustomerService) Logout(ctx context.Context, req *pb.LogoutReq) (*pb.LogoutResp, error) {
+	return &pb.LogoutResp{}, nil
 }

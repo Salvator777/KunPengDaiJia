@@ -122,7 +122,7 @@ func (CData CustomerData) GenerateTokenAndSave(c *biz.Customer, life time.Durati
 		// 说明
 		Subject: "给customer登录使用",
 		//签发给谁用
-		Audience: []string{"customer"},
+		Audience: []string{"customer", "others"},
 		// 有效期至
 		ExpiresAt: &jwt.NumericDate{time.Now().Add(life)},
 		// 何时启用
@@ -151,4 +151,12 @@ func (CData CustomerData) GenerateTokenAndSave(c *biz.Customer, life time.Durati
 	}
 
 	return signedToken, nil
+}
+
+func (CData CustomerData) GetToken(id any) (string, error) {
+	c := &biz.Customer{}
+	if res := CData.data.Mdb.First(c, id); res.Error != nil {
+		return "", res.Error
+	}
+	return c.Token, nil
 }

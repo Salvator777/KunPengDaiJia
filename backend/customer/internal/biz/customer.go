@@ -29,3 +29,6 @@ type CustomerToken struct {
 	Token          string       `gorm:"type: varchar(4095);" json:"token,omitempty"`
 	TokenCreatedAt sql.NullTime `gorm:"" json:"token_created_at,omitempty"`
 }
+
+const CustomerSecret = "MySecretKey"
+const CustomerTokenLife = 3600 * 24 * 30 * 2

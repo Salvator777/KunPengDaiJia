@@ -26,6 +26,19 @@ service Customer {
 			body:"*"
 		};
 	}
+
+	rpc Logout (LogoutReq) returns (LogoutResp){
+		option (google.api.http) = {
+			get: "/customer/Logout"
+		};
+	}
+}
+
+message LogoutReq{
+}
+
+message LogoutResp{
+	
 }
 
 message LoginReq{
