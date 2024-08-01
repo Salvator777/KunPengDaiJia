@@ -32,13 +32,35 @@ service Customer {
 			get: "/customer/Logout"
 		};
 	}
+
+	// 价格预估
+	rpc EstimatePrice (EstimatePriceReq) returns (EstimatePriceResp) {
+		option (google.api.http) = {
+			post: "/customer/estimate-price",
+			body:"*"
+		};
+	}
 }
+
+message EstimatePriceReq {
+    string origin = 1;
+    string destination = 2;
+};
+
+message EstimatePriceResp {
+    int64 code = 1;
+    string message = 2;
+    string origin = 3;
+    string destination = 4;
+    int64 price = 5;
+};
 
 message LogoutReq{
 }
 
 message LogoutResp{
-	
+	int64 code = 1;
+	string message = 2;
 }
 
 message LoginReq{

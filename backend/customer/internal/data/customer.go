@@ -10,9 +10,14 @@ import (
 	"regexp"
 	"time"
 
+	consul "github.com/go-kratos/kratos/contrib/registry/consul/v2"
 	"github.com/go-kratos/kratos/v2/errors"
+	"github.com/go-kratos/kratos/v2/log"
+	"github.com/go-kratos/kratos/v2/selector"
+	"github.com/go-kratos/kratos/v2/selector/random"
 	"github.com/go-kratos/kratos/v2/transport/grpc"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/hashicorp/consul/api"
 	"gorm.io/gorm"
 )
 
@@ -48,8 +53,27 @@ func (CData CustomerData) GetVerifyCode(PhoneNum string) (*pb.GetVerifyCodeResp,
 		}, nil
 	}
 
-	// 2.连接验证码服务
-	conn, err := grpc.DialInsecure(context.Background(), grpc.WithEndpoint("localhost:9000")) //验证码的grpc地址
+	// 2.使用服务发现调用验证码服务
+	// 拿到服务注册管理器
+	consulConfig := api.DefaultConfig()
+	consulConfig.Address = "localhost:8500"
+	consulClient, err := api.NewClient(consulConfig)
+	if err != nil {
+		log.Fatal(err)
+	}
+	discover := consul.New(consulClient)
+	// 设置负载均衡算法
+	selector.SetGlobalSelector(random.NewBuilder())
+	// selector.GlobalSelector(wrr.NewBuilder())
+	// selector.GlobalSelector(p2c.NewBuilder())
+
+	endpoint := "discovery:///VerifyCode"
+	conn, err := grpc.DialInsecure(
+		context.Background(),
+		// grpc.WithEndpoint("localhost:9111"),//验证码的grpc地址
+		grpc.WithEndpoint(endpoint),  // 目标服务的名字
+		grpc.WithDiscovery(discover), // 使用服务注册管理器来找服务
+	)
 	if err != nil {
 		return &pb.GetVerifyCodeResp{
 			Code:    201,
@@ -159,4 +183,18 @@ func (CData CustomerData) GetToken(id any) (string, error) {
 		return "", res.Error
 	}
 	return c.Token, nil
+}
+
+func (CData CustomerData) DelToken(id any) error {
+	// 找到customer
+	c := &biz.Customer{}
+	if res := CData.data.Mdb.First(c, id); res.Error != nil {
+		return res.Error
+	}
+
+	// 删除token保存
+	c.Token = ""
+	c.TokenCreatedAt = sql.NullTime{Valid: false}
+	CData.data.Mdb.Save(c)
+	return nil
 }

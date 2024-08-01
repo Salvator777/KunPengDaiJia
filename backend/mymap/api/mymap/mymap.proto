@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package api.mymap;
+
+option go_package = "mymap/api/mymap;mymap";
+
+
+service Mymap {
+    rpc GetDrivingInfo (GetDrivingInfoReq) returns (GetDrivingInfoReply);
+}
+
+message GetDrivingInfoReq {
+    string origin = 1;
+    string destination = 2;
+}
+message GetDrivingInfoReply {
+    string origin = 1;
+    string destination = 2;
+    string distance = 3;
+    string duration = 4;
+}

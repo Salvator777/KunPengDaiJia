@@ -8,6 +8,7 @@ import (
 
 	"verifyCode/internal/conf"
 
+	consul "github.com/go-kratos/kratos/contrib/registry/consul/v2"
 	"github.com/go-kratos/kratos/v2"
 	"github.com/go-kratos/kratos/v2/config"
 	"github.com/go-kratos/kratos/v2/config/file"
@@ -15,6 +16,8 @@ import (
 	"github.com/go-kratos/kratos/v2/middleware/tracing"
 	"github.com/go-kratos/kratos/v2/transport/grpc"
 	"github.com/go-kratos/kratos/v2/transport/http"
+	"github.com/google/uuid"
+	"github.com/hashicorp/consul/api"
 
 	_ "go.uber.org/automaxprocs"
 )
@@ -22,13 +25,13 @@ import (
 // go build -ldflags "-X main.Version=x.y.z"
 var (
 	// Name is the name of the compiled software.
-	Name string
+	Name string = "VerifyCode"
 	// Version is the version of the compiled software.
-	Version string
+	Version string = "1.0.0"
 	// flagconf is the config flag.
 	flagconf string
 
-	id, _ = os.Hostname()
+	id = Name + "-" + uuid.NewString()
 )
 
 func init() {
@@ -36,16 +39,33 @@ func init() {
 }
 
 func newApp(logger log.Logger, gs *grpc.Server, hs *http.Server) *kratos.App {
+	//一、获取consul客户端
+	consulConfig := api.DefaultConfig()
+	consulConfig.Address = "localhost:8500"
+	consulClient, err := api.NewClient(consulConfig)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	//二、获取consul注册管理器
+	register := consul.New(consulClient)
+	//设置meta属性，设置weight
+	mate := map[string]string{
+		"weight": "999",
+	}
 	return kratos.New(
 		kratos.ID(id),
 		kratos.Name(Name),
 		kratos.Version(Version),
-		kratos.Metadata(map[string]string{}),
+		// 设置元数据
+		kratos.Metadata(mate),
 		kratos.Logger(logger),
 		kratos.Server(
 			gs,
 			hs,
 		),
+		//三、创建服务时，指定服务注册工具
+		kratos.Registrar(register),
 	)
 }
 

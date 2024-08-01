@@ -7,6 +7,10 @@ import (
 	pb "customer/api/customer"
 	"customer/internal/biz"
 	"customer/internal/data"
+
+	"github.com/go-kratos/kratos/v2/errors"
+	"github.com/go-kratos/kratos/v2/middleware/auth/jwt"
+	jwt2 "github.com/golang-jwt/jwt/v5"
 )
 
 // 所有与customer相关的代码放这里
@@ -14,6 +18,7 @@ type CustomerService struct {
 	pb.UnimplementedCustomerServer
 	// 与customer的数据相关
 	CData *data.CustomerData
+	CB    *biz.CustomerBiz
 }
 
 func NewCustomerService(CData *data.CustomerData) *CustomerService {
@@ -87,5 +92,31 @@ func (s *CustomerService) Login(ctx context.Context, req *pb.LoginReq) (*pb.Logi
 }
 
 func (s *CustomerService) Logout(ctx context.Context, req *pb.LogoutReq) (*pb.LogoutResp, error) {
-	return &pb.LogoutResp{}, nil
+	// 1.获取用户id
+	claims, _ := jwt.FromContext(ctx)
+	claimsMap := claims.(jwt2.MapClaims)
+	id := claimsMap["jti"]
+
+	// 2.删除用户token
+	err := s.CData.DelToken(id)
+	if err != nil {
+		return &pb.LogoutResp{
+			Code:    201,
+			Message: "token删除失败",
+		}, nil
+	}
+
+	// 3.响应
+	return &pb.LogoutResp{
+		Code:    200,
+		Message: "logout success",
+	}, nil
+}
+
+func (s *CustomerService) EstimatePrice(ctx context.Context, req *pb.EstimatePriceReq) (*pb.EstimatePriceResp, error) {
+	res, err := s.CB.GetEstimatePrice(req.Origin, req.Destination)
+	if err != nil {
+		return nil, errors.New(200, "PRICE ERROR", "cal price error")
+	}
+	return res, nil
 }
